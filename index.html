@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>My 3D Photo Globe</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <style>
+    html, body { height: 100%; margin: 0; background: #0b0b0f; color: #eaeaea; font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif; }
+    #globeCanvas { display: block; width: 100%; height: 100%; outline: none; }
+
+    .ui {
+      position: fixed; top: 12px; left: 12px; right: 12px; display: flex; gap: 10px; align-items: center; z-index: 10;
+      pointer-events: none;
+    }
+    .ui-group {
+      display: inline-flex; gap: 10px; align-items: center; pointer-events: auto;
+      background: rgba(15, 15, 22, 0.55); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px; padding: 8px 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+    }
+    button {
+      appearance: none; border: none; border-radius: 10px; padding: 10px 14px; font-weight: 600; letter-spacing: 0.2px;
+      background: #3b82f6; color: white; cursor: pointer; transition: transform 0.08s ease, filter 0.15s ease, background 0.2s ease;
+    }
+    button:hover { filter: brightness(1.06); }
+    button:active { transform: translateY(1px); }
+    #hint { opacity: 0.85; font-size: 14px; }
+    .badge {
+      font-size: 12px; opacity: 0.8; padding: 4px 8px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .overlay {
+      position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,0.6);
+      opacity: 0; pointer-events: none; transition: opacity 120ms ease; z-index: 20;
+    }
+    .overlay.show { opacity: 1; pointer-events: auto; }
+    .overlay-content {
+      max-width: min(92vw, 1200px); max-height: 92vh; position: relative;
+      background: rgba(20,20,24,0.6); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(12px);
+      border-radius: 14px; padding: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .overlay-content img {
+      display: block; width: 100%; height: auto; max-height: calc(92vh - 24px); object-fit: contain; border-radius: 10px;
+    }
+    .overlay .close {
+      position: absolute; top: 8px; right: 8px; width: 40px; height: 40px; border-radius: 10px; font-size: 24px; line-height: 24px;
+      color: #eaeaea; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); cursor: pointer;
+    }
+
+    #toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+      background: rgba(20,20,28,0.75); border: 1px solid rgba(255,255,255,0.1);
+      color: #f1f5f9; padding: 10px 14px; border-radius: 10px; z-index: 15; box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+      opacity: 0; pointer-events: none; transition: opacity 140ms ease;
+    }
+    #toast.show { opacity: 1; }
+
+    @media (max-width: 520px) { #hint { display: none; } }
+  </style>
+</head>
+<body>
+  <canvas id="globeCanvas" aria-label="Interactive 3D globe"></canvas>
+
+  <div class="ui">
+    <div class="ui-group">
+      <button id="uploadBtn" title="Upload a photo to drop a pin">Upload photo</button>
+      <span id="hint">After uploading, click the globe to place your pin. Click a pin to view your photo.</span>
+      <span class="badge">one photo per pin</span>
+    </div>
+  </div>
+
+  <div id="overlay" class="overlay" aria-hidden="true">
+    <div class="overlay-content" role="dialog" aria-modal="true" aria-label="Photo viewer">
+      <button class="close" title="Close">&times;</button>
+      <img id="overlayImg" alt="Your uploaded photo" />
+    </div>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <!-- Hidden input so we can style the button -->
+  <input id="fileInput" type="file" accept="image/*" capture="environment" hidden />
+
+  <!-- Polyfill to broaden import‑map support on mobile; safe to include everywhere -->
+  <script async src="https://unpkg.com/es-module-shims@1.11.0/dist/es-module-shims.js"></script>
+
+  <!-- Import map ensures Three.js add-ons resolve correctly on GitHub Pages -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // --------- DOM ----------
+    const canvas = document.getElementById('globeCanvas');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const fileInput = document.getElementById('fileInput');
+    const overlay = document.getElementById('overlay');
+    const overlayImg = document.getElementById('overlayImg');
+    const overlayClose = overlay.querySelector('.close');
+    const toast = document.getElementById('toast');
+
+    function showToast(msg, ms = 1800) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => toast.classList.remove('show'), ms);
+    }
+
+    // --------- THREE Setup ----------
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 1.4, 2.2);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.rotateSpeed = 0.45;
+    controls.zoomSpeed = 0.8;
+    controls.minDistance = 1.3;
+    controls.maxDistance = 5.5;
+    controls.enablePan = false;
+    controls.target.set(0, 0, 0);
+
+    // Lighting
+    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambient);
+    const dir = new THREE.DirectionalLight(0xffffff, 1.0);
+    dir.position.set(5, 3, 2);
+    scene.add(dir);
+
+    // Earth
+    const EARTH_RADIUS = 1.0;
+    const earthGeom = new THREE.SphereGeometry(EARTH_RADIUS, 96, 96);
+    const texLoader = new THREE.TextureLoader();
+
+    // High-quality textures (online)
+    const dayTex = texLoader.load('https://unpkg.com/three@0.160.0/examples/textures/planets/earth_atmos_2048.jpg');
+    dayTex.colorSpace = THREE.SRGBColorSpace;
+    const bumpTex = texLoader.load('https://unpkg.com/three@0.160.0/examples/textures/planets/earth_bump_2048.jpg');
+
+    const earthMat = new THREE.MeshPhongMaterial({
+      map: dayTex,
+      bumpMap: bumpTex,
+      bumpScale: 0.035,
+      specular: new THREE.Color(0x222222),
+      shininess: 5
+    });
+
+    const earth = new THREE.Mesh(earthGeom, earthMat);
+    scene.add(earth);
+
+    // Markers container
+    const markers = new THREE.Group();
+    scene.add(markers);
+
+    // Raycaster
+    const raycaster = new THREE.Raycaster();
+    const pointerNDC = new THREE.Vector2();
+
+    function updatePointerNDC(e) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointerNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      pointerNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    }
+
+    // Coordinate helpers
+    function latLonToVec3(latDeg, lonDeg, radius = EARTH_RADIUS) {
+      const lat = THREE.MathUtils.degToRad(latDeg);
+      const lon = THREE.MathUtils.degToRad(lonDeg);
+      const x = radius * Math.cos(lat) * Math.cos(lon);
+      const z = radius * Math.cos(lat) * Math.sin(lon);
+      const y = radius * Math.sin(lat);
+      return new THREE.Vector3(x, y, z);
+    }
+    function vec3ToLatLon(vec) {
+      const v = vec.clone().normalize();
+      const lat = THREE.MathUtils.radToDeg(Math.asin(v.y));
+      const lon = THREE.MathUtils.radToDeg(Math.atan2(v.z, v.x));
+      return { lat, lon };
+    }
+
+    // Placement / viewing state
+    let placing = false;
+    let pendingImageURL = null;
+
+    // Upload flow
+    uploadBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      e.target.value = ''; // allow re-upload of same file later
+      if (!file) return;
+      const url = await fileToDataURL(file);
+      pendingImageURL = url;
+      placing = true;
+      document.body.style.cursor = 'crosshair';
+      showToast('Click the globe where you want your photo.');
+    });
+
+    function fileToDataURL(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Create a pin (small bright sphere)
+    function addMarker(lat, lon, imageURL) {
+      const pos = latLonToVec3(lat, lon, EARTH_RADIUS + 0.01);
+      const geom = new THREE.SphereGeometry(0.018, 18, 18);
+      const mat = new THREE.MeshBasicMaterial({ color: 0xff3b5c });
+      const mesh = new THREE.Mesh(geom, mat);
+      mesh.position.copy(pos);
+      mesh.userData = { lat, lon, imageURL };
+      markers.add(mesh);
+      return mesh;
+    }
+
+    // Fly-to animation
+    let flight = null;
+    function flyTo(lat, lon, distance = 2.1, ms = 900) {
+      const toTarget = latLonToVec3(lat, lon, EARTH_RADIUS);
+      const toCam = toTarget.clone().setLength(distance);
+
+      flight = {
+        start: performance.now(),
+        dur: ms,
+        fromPos: camera.position.clone(),
+        toPos: toCam,
+        fromTgt: controls.target.clone(),
+        toTgt: toTarget
+      };
+    }
+
+    // Interaction
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+      updatePointerNDC(e);
+      raycaster.setFromCamera(pointerNDC, camera);
+
+      if (placing) {
+        const hit = raycaster.intersectObject(earth, false)[0];
+        if (hit) {
+          const pointOnSurface = hit.point.clone().normalize().multiplyScalar(EARTH_RADIUS);
+          const { lat, lon } = vec3ToLatLon(pointOnSurface);
+          addMarker(lat, lon, pendingImageURL);
+          flyTo(lat, lon);
+          placing = false;
+          pendingImageURL = null;
+          document.body.style.cursor = '';
+          showToast('Pinned! Click the dot to view your photo.', 1600);
+        }
+        return;
+      }
+
+      // Not placing: check for marker click
+      const mHit = raycaster.intersectObjects(markers.children, true)[0];
+      if (mHit) {
+        const { lat, lon, imageURL } = mHit.object.userData;
+        flyTo(lat, lon, 2.0, 650);
+        openOverlay(imageURL);
+      }
+    });
+
+    // Hover feedback (pointer cursor on desktop)
+    renderer.domElement.addEventListener('pointermove', (e) => {
+      updatePointerNDC(e);
+      raycaster.setFromCamera(pointerNDC, camera);
+      if (placing) {
+        renderer.domElement.style.cursor = 'crosshair';
+        return;
+      }
+      const mHit = raycaster.intersectObjects(markers.children, true)[0];
+      renderer.domElement.style.cursor = mHit ? 'pointer' : '';
+    });
+
+    // Overlay controls
+    function openOverlay(imgURL) {
+      overlayImg.src = imgURL;
+      overlay.classList.add('show');
+      overlay.setAttribute('aria-hidden', 'false');
+    }
+    function closeOverlay() {
+      overlay.classList.remove('show');
+      overlay.setAttribute('aria-hidden', 'true');
+      overlayImg.src = '';
+    }
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeOverlay(); });
+    overlayClose.addEventListener('click', closeOverlay);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (placing) {
+          placing = false; pendingImageURL = null; document.body.style.cursor = '';
+          showToast('Placement canceled.', 1200);
+        } else if (overlay.classList.contains('show')) {
+          closeOverlay();
+        }
+      }
+    });
+
+    // Animate
+    function animate() {
+      requestAnimationFrame(animate);
+      earth.rotation.y += 0.0005; // gentle spin
+      if (flight) {
+        const t = Math.min(1, (performance.now() - flight.start) / flight.dur);
+        const ease = t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
+        camera.position.lerpVectors(flight.fromPos, flight.toPos, ease);
+        controls.target.lerpVectors(flight.fromTgt, flight.toTgt, ease);
+        if (t >= 1) flight = null;
+      }
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // Resize
+    window.addEventListener('resize', () => {
+      const w = window.innerWidth, h = window.innerHeight;
+      renderer.setSize(w, h);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    });
+
+    // WebGL2 heads-up
+    if (!renderer.capabilities.isWebGL2) {
+      showToast('Heads up: WebGL2 not available. Things may be slower.');
+    }
+  </script>
+</body>
+</html>
