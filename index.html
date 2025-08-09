@@ -7,57 +7,19 @@
   <style>
     html, body { height: 100%; margin: 0; background: #0b0b0f; color: #eaeaea; font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif; }
     #globeCanvas { display: block; width: 100%; height: 100%; outline: none; }
-
-    .ui {
-      position: fixed; top: 12px; left: 12px; right: 12px; display: flex; gap: 10px; align-items: center; z-index: 10;
-      pointer-events: none;
-    }
-    .ui-group {
-      display: inline-flex; gap: 10px; align-items: center; pointer-events: auto;
-      background: rgba(15, 15, 22, 0.55); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 12px; padding: 8px 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.35);
-    }
-    button {
-      appearance: none; border: none; border-radius: 10px; padding: 10px 14px; font-weight: 600; letter-spacing: 0.2px;
-      background: #3b82f6; color: white; cursor: pointer; transition: transform 0.08s ease, filter 0.15s ease, background 0.2s ease;
-    }
-    button:hover { filter: brightness(1.06); }
-    button:active { transform: translateY(1px); }
-    #hint { opacity: 0.85; font-size: 14px; }
-    .badge {
-      font-size: 12px; opacity: 0.8; padding: 4px 8px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);
-    }
-
-    .overlay {
-      position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,0.6);
-      opacity: 0; pointer-events: none; transition: opacity 120ms ease; z-index: 20;
-    }
+    .ui { position: fixed; top: 12px; left: 12px; right: 12px; display: flex; gap: 10px; align-items: center; z-index: 10; pointer-events: none; }
+    .ui-group { display: inline-flex; gap: 10px; align-items: center; pointer-events: auto; background: rgba(15,15,22,0.55); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 8px 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.35); }
+    button { appearance: none; border: none; border-radius: 10px; padding: 10px 14px; font-weight: 600; background: #3b82f6; color: white; cursor: pointer; transition: transform .08s, filter .15s, background .2s; }
+    button:hover { filter: brightness(1.06); } button:active { transform: translateY(1px); }
+    #hint { opacity: .85; font-size: 14px; } .badge { font-size: 12px; opacity: .8; padding: 4px 8px; border-radius: 8px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); }
+    .overlay { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.6); opacity: 0; pointer-events: none; transition: opacity 120ms; z-index: 20; }
     .overlay.show { opacity: 1; pointer-events: auto; }
-    .overlay-content {
-      max-width: min(92vw, 1200px); max-height: 92vh; position: relative;
-      background: rgba(20,20,24,0.6); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(12px);
-      border-radius: 14px; padding: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    }
-    .overlay-content img {
-      display: block; width: 100%; height: auto; max-height: calc(92vh - 24px); object-fit: contain; border-radius: 10px;
-    }
-    .overlay .close {
-      position: absolute; top: 8px; right: 8px; width: 40px; height: 40px; border-radius: 10px; font-size: 24px; line-height: 24px;
-      color: #eaeaea; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); cursor: pointer;
-    }
-
-    #toast {
-      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
-      background: rgba(20,20,28,0.75); border: 1px solid rgba(255,255,255,0.1);
-      color: #f1f5f9; padding: 10px 14px; border-radius: 10px; z-index: 15; box-shadow: 0 10px 30px rgba(0,0,0,0.45);
-      opacity: 0; pointer-events: none; transition: opacity 140ms ease;
-    }
+    .overlay-content { max-width: min(92vw, 1200px); max-height: 92vh; position: relative; background: rgba(20,20,24,.6); border: 1px solid rgba(255,255,255,.08); backdrop-filter: blur(12px); border-radius: 14px; padding: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+    .overlay-content img { display: block; width: 100%; height: auto; max-height: calc(92vh - 24px); object-fit: contain; border-radius: 10px; }
+    .overlay .close { position: absolute; top: 8px; right: 8px; width: 40px; height: 40px; border-radius: 10px; font-size: 24px; color: #eaeaea; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.1); cursor: pointer; }
+    #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: rgba(20,20,28,.75); border: 1px solid rgba(255,255,255,.1); color: #f1f5f9; padding: 10px 14px; border-radius: 10px; z-index: 15; box-shadow: 0 10px 30px rgba(0,0,0,.45); opacity: 0; pointer-events: none; transition: opacity 140ms; }
     #toast.show { opacity: 1; }
-
-    #loading {
-      position: fixed; top: 12px; right: 12px; z-index: 11; font-size: 12px; opacity: 0.85;
-      background: rgba(15, 15, 22, 0.55); border: 1px solid rgba(255,255,255,0.08); padding: 6px 10px; border-radius: 10px;
-    }
+    #loading { position: fixed; top: 12px; right: 12px; z-index: 11; font-size: 12px; opacity: .85; background: rgba(15,15,22,.55); border: 1px solid rgba(255,255,255,.08); padding: 6px 10px; border-radius: 10px; }
     @media (max-width: 520px) { #hint { display: none; } }
   </style>
 </head>
@@ -66,7 +28,7 @@
 
   <div class="ui">
     <div class="ui-group">
-      <button id="uploadBtn" title="Upload a photo to drop a pin">Upload photo</button>
+      <button id="uploadBtn">Upload photo</button>
       <span id="hint">After uploading, click the globe to place your pin. Click a pin to view your photo.</span>
       <span class="badge">one photo per pin</span>
     </div>
@@ -82,15 +44,15 @@
   <div id="toast" role="status" aria-live="polite"></div>
   <div id="loading" hidden>Loading textures…</div>
 
-  <!-- Hidden input so we can style the button; capture lets phones open camera too -->
   <input id="fileInput" type="file" accept="image/*" capture="environment" hidden />
 
-  <!-- Load THREE globally (no modules, no import maps) -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- Module imports with full URLs (no import maps needed) -->
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+    import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
 
-  <!-- App -->
-  <script>
+    const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@0.160.0';
+
     // --------- DOM ----------
     const canvas = document.getElementById('globeCanvas');
     const uploadBtn = document.getElementById('uploadBtn');
@@ -121,7 +83,7 @@
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
     camera.position.set(0, 1.4, 2.2);
 
-    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.rotateSpeed = 0.45;
     controls.zoomSpeed = 0.8;
@@ -137,74 +99,57 @@
     dir.position.set(5, 3, 2);
     scene.add(dir);
 
-    // Earth (starts as visible solid color; textures added after load)
+    // Earth: visible immediately (solid), then upgraded with textures
     const EARTH_RADIUS = 1.0;
     const earthGeom = new THREE.SphereGeometry(EARTH_RADIUS, 96, 96);
-    const earthMat = new THREE.MeshPhongMaterial({
-      color: 0x6ea8ff,
-      shininess: 6,
-      specular: new THREE.Color(0x222222)
-    });
+    const earthMat = new THREE.MeshPhongMaterial({ color: 0x6ea8ff, shininess: 6, specular: new THREE.Color(0x222222) });
     const earth = new THREE.Mesh(earthGeom, earthMat);
     scene.add(earth);
 
-    // Markers container
+    // Markers
     const markers = new THREE.Group();
     scene.add(markers);
 
     // Raycaster
     const raycaster = new THREE.Raycaster();
     const pointerNDC = new THREE.Vector2();
-
     function updatePointerNDC(e) {
       const rect = renderer.domElement.getBoundingClientRect();
       pointerNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       pointerNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
     }
 
-    // Coordinate helpers
+    // Helpers
     function latLonToVec3(latDeg, lonDeg, radius = EARTH_RADIUS) {
       const lat = THREE.MathUtils.degToRad(latDeg);
       const lon = THREE.MathUtils.degToRad(lonDeg);
-      const x = radius * Math.cos(lat) * Math.cos(lon);
-      const z = radius * Math.cos(lat) * Math.sin(lon);
-      const y = radius * Math.sin(lat);
-      return new THREE.Vector3(x, y, z);
+      return new THREE.Vector3(
+        radius * Math.cos(lat) * Math.cos(lon),
+        radius * Math.sin(lat),
+        radius * Math.cos(lat) * Math.sin(lon)
+      );
     }
     function vec3ToLatLon(vec) {
       const v = vec.clone().normalize();
-      const lat = THREE.MathUtils.radToDeg(Math.asin(v.y));
-      const lon = THREE.MathUtils.radToDeg(Math.atan2(v.z, v.x));
-      return { lat, lon };
+      return { lat: THREE.MathUtils.radToDeg(Math.asin(v.y)), lon: THREE.MathUtils.radToDeg(Math.atan2(v.z, v.x)) };
     }
 
     // Placement / viewing state
     let placing = false;
     let pendingImageURL = null;
 
-    // Upload flow
     uploadBtn.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', async (e) => {
       const file = e.target.files && e.target.files[0];
-      e.target.value = ''; // allow re-upload of same file later
+      e.target.value = '';
       if (!file) return;
-      const url = await fileToDataURL(file);
+      const url = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
       pendingImageURL = url;
       placing = true;
       document.body.style.cursor = 'crosshair';
       showToast('Click the globe where you want your photo.');
     });
 
-    function fileToDataURL(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
-
-    // Create a pin (small bright sphere)
     function addMarker(lat, lon, imageURL) {
       const pos = latLonToVec3(lat, lon, EARTH_RADIUS + 0.01);
       const geom = new THREE.SphereGeometry(0.018, 18, 18);
@@ -216,23 +161,13 @@
       return mesh;
     }
 
-    // Fly-to animation
     let flight = null;
     function flyTo(lat, lon, distance = 2.1, ms = 900) {
       const toTarget = latLonToVec3(lat, lon, EARTH_RADIUS);
       const toCam = toTarget.clone().setLength(distance);
-
-      flight = {
-        start: performance.now(),
-        dur: ms,
-        fromPos: camera.position.clone(),
-        toPos: toCam,
-        fromTgt: controls.target.clone(),
-        toTgt: toTarget
-      };
+      flight = { start: performance.now(), dur: ms, fromPos: camera.position.clone(), toPos: toCam, fromTgt: controls.target.clone(), toTgt: toTarget };
     }
 
-    // Interaction
     renderer.domElement.addEventListener('pointerdown', (e) => {
       updatePointerNDC(e);
       raycaster.setFromCamera(pointerNDC, camera);
@@ -240,8 +175,8 @@
       if (placing) {
         const hit = raycaster.intersectObject(earth, false)[0];
         if (hit) {
-          const pointOnSurface = hit.point.clone().normalize().multiplyScalar(EARTH_RADIUS);
-          const { lat, lon } = vec3ToLatLon(pointOnSurface);
+          const p = hit.point.clone().normalize().multiplyScalar(EARTH_RADIUS);
+          const { lat, lon } = vec3ToLatLon(p);
           addMarker(lat, lon, pendingImageURL);
           flyTo(lat, lon);
           placing = false;
@@ -252,33 +187,24 @@
         return;
       }
 
-      // Not placing: check for marker click
       const mHit = raycaster.intersectObjects(markers.children, true)[0];
       if (mHit) {
         const { lat, lon, imageURL } = mHit.object.userData;
         flyTo(lat, lon, 2.0, 650);
-        openOverlay(imageURL);
+        overlayImg.src = imageURL;
+        overlay.classList.add('show');
+        overlay.setAttribute('aria-hidden', 'false');
       }
     });
 
-    // Hover feedback (desktop)
     renderer.domElement.addEventListener('pointermove', (e) => {
       updatePointerNDC(e);
       raycaster.setFromCamera(pointerNDC, camera);
-      if (placing) {
-        renderer.domElement.style.cursor = 'crosshair';
-        return;
-      }
+      if (placing) { renderer.domElement.style.cursor = 'crosshair'; return; }
       const mHit = raycaster.intersectObjects(markers.children, true)[0];
       renderer.domElement.style.cursor = mHit ? 'pointer' : '';
     });
 
-    // Overlay controls
-    function openOverlay(imgURL) {
-      overlayImg.src = imgURL;
-      overlay.classList.add('show');
-      overlay.setAttribute('aria-hidden', 'false');
-    }
     function closeOverlay() {
       overlay.classList.remove('show');
       overlay.setAttribute('aria-hidden', 'true');
@@ -288,19 +214,14 @@
     overlayClose.addEventListener('click', closeOverlay);
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        if (placing) {
-          placing = false; pendingImageURL = null; document.body.style.cursor = '';
-          showToast('Placement canceled.', 1200);
-        } else if (overlay.classList.contains('show')) {
-          closeOverlay();
-        }
+        if (placing) { placing = false; pendingImageURL = null; document.body.style.cursor = ''; showToast('Placement canceled.', 1200); }
+        else if (overlay.classList.contains('show')) closeOverlay();
       }
     });
 
-    // Animate
     function animate() {
       requestAnimationFrame(animate);
-      earth.rotation.y += 0.0005; // gentle spin
+      earth.rotation.y += 0.0005;
       if (flight) {
         const t = Math.min(1, (performance.now() - flight.start) / flight.dur);
         const ease = t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
@@ -313,7 +234,6 @@
     }
     animate();
 
-    // Resize
     window.addEventListener('resize', () => {
       const w = window.innerWidth, h = window.innerHeight;
       renderer.setSize(w, h);
@@ -323,44 +243,28 @@
 
     // --- Texture loading with graceful fallback ---
     const texLoader = new THREE.TextureLoader();
-    texLoader.setCrossOrigin('anonymous'); // help CORS from CDNs
-
+    texLoader.setCrossOrigin('anonymous');
     async function loadEarthTextures() {
-      loading.hidden = false;
-      const base = 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/textures/planets';
+      document.getElementById('loading').hidden = false;
+      const base = `${THREE_CDN}/examples/textures/planets`;
       try {
-        const dayTex = await loadTexture(base + '/earth_atmos_2048.jpg', true);
-        const bumpTex = await loadTexture(base + '/earth_bump_2048.jpg', false);
-
-        earthMat.map = dayTex;
-        earthMat.bumpMap = bumpTex;
+        const day = await new Promise((res, rej) => texLoader.load(`${base}/earth_atmos_2048.jpg`, t => { t.colorSpace = THREE.SRGBColorSpace; res(t); }, undefined, rej));
+        const bump = await new Promise((res, rej) => texLoader.load(`${base}/earth_bump_2048.jpg`, res, undefined, rej));
+        earthMat.map = day;
+        earthMat.bumpMap = bump;
         earthMat.bumpScale = 0.035;
-        earthMat.color = new THREE.Color(0xffffff); // use texture colors
+        earthMat.color = new THREE.Color(0xffffff);
         earthMat.needsUpdate = true;
       } catch (err) {
-        console.warn('Texture load failed, staying in solid-color mode.', err);
+        console.warn('Texture load failed; using solid color.', err);
         showToast('Using fallback colors (texture server blocked).', 2200);
       } finally {
-        loading.hidden = true;
+        document.getElementById('loading').hidden = true;
       }
     }
-
-    function loadTexture(url, srgb) {
-      return new Promise((resolve, reject) => {
-        texLoader.load(
-          url,
-          (tex) => { if (srgb) tex.colorSpace = THREE.SRGBColorSpace; resolve(tex); },
-          undefined,
-          (err) => reject(err)
-        );
-      });
-    }
-
     loadEarthTextures();
 
-    if (!renderer.getContext()) {
-      showToast('WebGL not available in this browser.', 3000);
-    }
+    if (!renderer.getContext()) showToast('WebGL not available in this browser.', 3000);
   </script>
 </body>
 </html>
