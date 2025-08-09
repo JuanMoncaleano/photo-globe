@@ -54,7 +54,6 @@
     }
     #toast.show { opacity: 1; }
 
-    /* Lightweight spinner while textures load */
     #loading {
       position: fixed; top: 12px; right: 12px; z-index: 11; font-size: 12px; opacity: 0.85;
       background: rgba(15, 15, 22, 0.55); border: 1px solid rgba(255,255,255,0.08); padding: 6px 10px; border-radius: 10px;
@@ -86,11 +85,13 @@
   <!-- Hidden input so we can style the button; capture lets phones open camera too -->
   <input id="fileInput" type="file" accept="image/*" capture="environment" hidden />
 
-  <!-- Direct module imports (no import map). This path works well on GitHub Pages & mobile. -->
+  <!-- Direct module imports with literal URLs (required) -->
   <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+    import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+    // CDN base for textures (safe to use as a variable – just not inside the import lines)
     const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@0.160.0';
-    import * as THREE from `${THREE_CDN}/build/three.module.js`;
-    import { OrbitControls } from `${THREE_CDN}/examples/jsm/controls/OrbitControls.js`;
 
     // --------- DOM ----------
     const canvas = document.getElementById('globeCanvas');
@@ -138,11 +139,11 @@
     dir.position.set(5, 3, 2);
     scene.add(dir);
 
-    // Earth (starts visible in solid color, then upgrades to textures)
+    // Earth: visible immediately (solid color), then upgraded with textures
     const EARTH_RADIUS = 1.0;
     const earthGeom = new THREE.SphereGeometry(EARTH_RADIUS, 96, 96);
     const earthMat = new THREE.MeshPhongMaterial({
-      color: 0x6ea8ff,          // visible immediately
+      color: 0x6ea8ff,
       shininess: 6,
       specular: new THREE.Color(0x222222)
     });
@@ -253,7 +254,6 @@
         return;
       }
 
-      // Not placing: check for marker click
       const mHit = raycaster.intersectObjects(markers.children, true)[0];
       if (mHit) {
         const { lat, lon, imageURL } = mHit.object.userData;
@@ -324,7 +324,7 @@
 
     // --- Texture loading with graceful fallback ---
     const texLoader = new THREE.TextureLoader();
-    texLoader.setCrossOrigin('anonymous'); // help CORS from CDNs
+    texLoader.setCrossOrigin('anonymous');
 
     async function loadEarthTextures() {
       loading.hidden = false;
@@ -362,7 +362,6 @@
 
     loadEarthTextures();
 
-    // WebGL heads-up
     if (!renderer.getContext()) {
       showToast('WebGL not available in this browser.', 3000);
     }
